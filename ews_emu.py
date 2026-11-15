@@ -74,10 +74,11 @@ def main() -> None:
         ttk.Label(controls, text=text).grid(row=row, column=0, columnspan=2, sticky="w", pady=(10, 3))
 
     row_label(0, "信号種別")
-    ttk.Combobox(
+    signal_box = ttk.Combobox(
         controls, textvariable=signal, state="readonly",
         values=("第一種開始", "第二種開始", "終了", "試験信号（第一種）", "試験信号（第二種）"), width=30,
-    ).grid(row=1, column=0, columnspan=2, sticky="ew")
+    )
+    signal_box.grid(row=1, column=0, columnspan=2, sticky="ew")
     row_label(2, "出力方式")
     mode_box = ttk.Combobox(controls, textvariable=mode, state="readonly", values=("音声FSK / WAV", "地上デジタル記述子"), width=30)
     mode_box.grid(row=3, column=0, columnspan=2, sticky="ew")
@@ -522,8 +523,17 @@ def main() -> None:
         date_entry.configure(state="disabled" if digital else "normal")
         service_box.configure(state="readonly")
         play_button.configure(state="disabled" if digital else "normal")
+        audio_settings_changed()
+
+    def audio_settings_changed(_event=None) -> None:
+        if mode.get().startswith("音声"):
+            is_end = signal.get() == "終了" or signal.get().startswith("試験信号")
+            is_mw_sw = medium.get() == "中波・短波"
+            blocks.set(("4" if is_mw_sw else "2") if is_end else ("10" if is_mw_sw else "4"))
         update_preview()
 
+    signal_box.bind("<<ComboboxSelected>>", audio_settings_changed)
+    medium_box.bind("<<ComboboxSelected>>", audio_settings_changed)
     mode_box.bind("<<ComboboxSelected>>", mode_changed)
     ttk.Button(controls, text="プレビュー更新", command=update_preview).grid(row=16, column=0, columnspan=2, sticky="ew", pady=(18, 5))
     play_button = ttk.Button(controls, text="▶ 再生", command=play)
