@@ -8,7 +8,7 @@ from tkinter import filedialog, messagebox, ttk
 import winsound
 
 from area_codes import AREAS
-from digital_service_catalog import DEMO_AREA_GROUPS, DEMO_SERVICES
+from digital_service_catalog import AREA_GROUPS, CATALOG_IS_LOCAL, SERVICES
 from ews_digital import build_emergency_descriptor, write_descriptor
 from ews_signal import AREA_COMMON, SAMPLE_RATE, build_block, build_signal, preview_bitstream, preview_envelope, preview_pcm_waveform, signal_sample_count, write_wav
 
@@ -84,7 +84,7 @@ def main() -> None:
     row_label(4, "地域符号")
     area_box = ttk.Combobox(controls, textvariable=area_name, state="readonly", values=tuple(name for name, _ in AREAS), height=12)
     area_box.grid(row=5, column=0, columnspan=2, sticky="ew")
-    row_label(6, "サービスID（デモ値）")
+    row_label(6, "サービスID（ローカル資料）" if CATALOG_IS_LOCAL else "サービスID（デモ値）")
     service_box = ttk.Combobox(controls, textvariable=service_option, state="readonly", width=34)
     service_box.grid(row=7, column=0, columnspan=2, sticky="ew")
     row_label(8, "送出日時 (YYYY-MM-DD HH:MM)")
@@ -121,13 +121,13 @@ def main() -> None:
     service_ids_by_option: dict[str, int] = {}
 
     def refresh_service_options() -> None:
-        allowed_group = DEMO_AREA_GROUPS[area_name.get()]
-        groups = {allowed_group} if allowed_group is not None else {group for group, _sid, _name in DEMO_SERVICES}
+        allowed_groups = AREA_GROUPS[area_name.get()]
+        groups = set(allowed_groups) if allowed_groups is not None else {group for group, _sid, _en, _ja in SERVICES}
         service_ids_by_option.clear()
-        for group, sid, name in DEMO_SERVICES:
+        for group, sid, name_en, name_ja in SERVICES:
             if group not in groups:
                 continue
-            option = f"0x{sid:04X}  [架空] {name}"
+            option = f"0x{sid:04X}  {name_ja}" + (f" ({name_en})" if CATALOG_IS_LOCAL else " [架空]")
             service_ids_by_option[option] = sid
         options = tuple(service_ids_by_option)
         service_box.configure(values=options)
@@ -200,7 +200,7 @@ def main() -> None:
                 f"signal_level: {int(signal.get() in {'第二種開始', '試験信号（第二種）'})}  /  {'第二種' if signal.get() in {'第二種開始', '試験信号（第二種）'} else '第一種'}",
                 f"area_code: {data['area']}  ({area_name.get()})",
                 f"descriptor_length: {raw[1]} bytes  /  total: {len(raw)} bytes",
-                "サービスIDと局名は架空のデモ値です。実放送・実機試験には使用できません。",
+                "ローカルのTR-B14 6.7由来カタログです。現行の放送割当との一致は未確認です。" if CATALOG_IS_LOCAL else "サービスIDと局名は架空のデモ値です。実放送・実機試験には使用できません。",
                 "試験放送はstart_end_flag=0。TS/PMT多重やTMCCフラグの時間変化は含みません。",
             )
             for i, value in enumerate(values):
